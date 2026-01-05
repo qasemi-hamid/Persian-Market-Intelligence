@@ -14,7 +14,7 @@ import {
   Zap,
   TrendingUp as ProfitIcon
 } from 'lucide-react';
-import { getMarketAnalysis } from './services/geminiService';
+import { getMarketAnalysis } from './geminiService';
 import { AnalysisResponse, PriceData } from './types';
 
 const App: React.FC = () => {
