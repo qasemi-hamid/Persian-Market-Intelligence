@@ -2,25 +2,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResponse } from "./types";
 
+/**
+ * Service to fetch market analysis and pricing for the Iranian market
+ * using Gemini 3 and Google Search grounding.
+ */
 export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
-  // این نام دقیقاً باید در پنل Vercel در کادر Key وارد شده باشد
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey || apiKey === "undefined") {
-    throw new Error("کلید پیدا نشد: در پنل ورسل، نام را API_KEY بگذارید. (حروف بزرگ)");
-  }
-
-  if (!apiKey.startsWith("AIza")) {
-    throw new Error("فرمت کلید غلط است: کلید باید با AIza شروع شود. شما احتمالاً چیز دیگری در کادر Value گذاشته‌اید.");
-  }
-
-  // ایجاد کلاینت جدید برای هر درخواست جهت اطمینان از تازگی تنظیمات
-  const ai = new GoogleGenAI({ apiKey });
+  // Always use process.env.API_KEY directly as required.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
-    تحلیل حرفه‌ای بازار ایران (طلا، سکه، دلار، تتر).
-    قیمت‌های لحظه‌ای را پیدا کن و ۳ استراتژی جابجایی (Swap) پیشنهاد بده.
-    پاسخ فقط و فقط در قالب JSON باشد.
+    به عنوان یک تحلیلگر خبره بازار ایران:
+    ۱. قیمت لحظه‌ای دلار (بازار آزاد)، تتر، سکه امامی و طلای ۱۸ عیار را پیدا کن.
+    ۲. وضعیت فعلی بازار را در ۳ خط بسیار کوتاه تحلیل کن.
+    ۳. سه استراتژی جابجایی هوشمند پیشنهاد بده.
+    پاسخ حتما در قالب JSON باشد.
   `;
 
   try {
@@ -71,19 +66,33 @@ export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
       }
     });
 
-    if (!response.text) throw new Error("پاسخی از هوش مصنوعی دریافت نشد.");
-    
-    const data = JSON.parse(response.text);
-    return { ...data, sources: [] };
+    // Access the .text property directly as per guidelines
+    const text = response.text;
+    if (!text) throw new Error("پاسخی از هوش مصنوعی دریافت نشد.");
+
+    // Extract grounding source URLs for the UI as required when using search tools
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const sources = groundingChunks
+      .filter((chunk: any) => chunk.web)
+      .map((chunk: any) => ({
+        title: chunk.web.title || "منبع خبر",
+        uri: chunk.web.uri
+      }));
+
+    const parsedData = JSON.parse(text);
+    return {
+      ...parsedData,
+      sources: sources.slice(0, 4) // Include search references
+    };
+
   } catch (error: any) {
-    console.error("Detailed API Error:", error);
+    console.error("API Error:", error);
     
-    // تشخیص نوع خطا برای راهنمایی کاربر
-    const errorMsg = error.toString();
-    if (errorMsg.includes("API key not valid") || errorMsg.includes("403") || errorMsg.includes("401")) {
-      throw new Error("گوگل کلید شما را رد کرد! یا کپی/پیست ناقص بوده یا پروژه گوگل شما فعال نیست.");
+    // Graceful handling for quota errors
+    if (error.message?.includes("429") || error.message?.includes("QUOTA") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+      throw new Error("سهمیه رایگان هوش مصنوعی برای امروز به پایان رسیده است. لطفا دقایقی دیگر دوباره تلاش کنید.");
     }
     
-    throw new Error(`خطای سیستمی: ${error.message || "ارتباط با سرور گوگل برقرار نشد"}`);
+    throw new Error(`خطای سیستمی در دریافت داده‌ها: ${error.message}`);
   }
 };
