@@ -12,24 +12,32 @@ import {
   Globe,
   Activity,
   Zap,
-  TrendingUp as ProfitIcon
+  TrendingUp as ProfitIcon,
+  AlertCircle
 } from 'lucide-react';
 import { getMarketAnalysis } from './geminiService';
 import { AnalysisResponse, PriceData } from './types';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await getMarketAnalysis();
       setAnalysis(data);
       setLastUpdate(new Date());
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error("Fetch Error:", err);
+      if (err.message?.includes('API key')) {
+        setError('خطای پیکربندی: کلید دسترسی (API Key) معتبر نیست. لطفاً تنظیمات محیطی را بررسی کنید.');
+      } else {
+        setError('خطا در برقراری ارتباط با موتور تحلیلگر. لطفاً اتصال اینترنت خود را چک کرده و دوباره تلاش کنید.');
+      }
     } finally {
       setLoading(false);
     }
@@ -55,7 +63,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-300 pb-10 font-light selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-[#0f172a] text-slate-300 pb-10 font-light selection:bg-cyan-500/30 text-right" dir="rtl">
       {/* High-End Header */}
       <header className="bg-[#1e293b]/80 backdrop-blur-lg border-b border-slate-800 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between">
@@ -71,12 +79,13 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center">
             <button 
               onClick={fetchData}
-              className="p-2 hover:bg-slate-800 rounded-full transition-all text-slate-400 hover:text-cyan-400 group"
+              disabled={loading}
+              className="p-2 hover:bg-slate-800 rounded-full transition-all text-slate-400 hover:text-cyan-400 group disabled:opacity-50"
               title="به‌روزرسانی داده‌ها"
             >
               <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin text-cyan-500' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
             </button>
-            {lastUpdate && (
+            {lastUpdate && !error && (
               <span className="text-[8px] text-slate-500 font-medium mt-[-4px] tracking-tight">
                 {formatPersianDateTime(lastUpdate)}
               </span>
@@ -97,11 +106,23 @@ const App: React.FC = () => {
               <span className="text-[9px] opacity-60">داده‌ها مستقیماً از مراجع معتبر استخراج می‌شوند</span>
             </p>
           </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-rose-500/5 border border-rose-500/20 rounded-3xl p-8 text-center animate-in fade-in zoom-in duration-300">
+            <AlertCircle className="w-12 h-12 text-rose-500 mb-4 opacity-80" />
+            <h2 className="text-white font-bold mb-2 text-sm">بروز اختلال در دریافت اطلاعات</h2>
+            <p className="text-xs text-slate-400 mb-6 max-w-xs leading-6">{error}</p>
+            <button 
+              onClick={fetchData}
+              className="bg-slate-800 hover:bg-slate-700 text-cyan-400 text-[10px] font-bold px-6 py-2.5 rounded-xl border border-white/5 transition-all flex items-center gap-2"
+            >
+              تلاش مجدد <RefreshCcw className="w-3 h-3" />
+            </button>
+          </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
             
             {/* Real-time Market Ticker */}
-            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar" dir="rtl">
               {analysis?.prices.map((p, i) => (
                 <div key={i} className="flex-shrink-0 bg-slate-800/40 border border-slate-700/50 px-3 py-2.5 rounded-xl min-w-[120px] transition-colors hover:border-cyan-500/30">
                   <div className="text-[9px] text-slate-500 font-bold mb-0.5 truncate">{p.name}</div>
@@ -119,11 +140,11 @@ const App: React.FC = () => {
             <section className="space-y-4">
               <div className="flex items-center gap-2 mb-2 px-1">
                 <div className="w-1 h-4 bg-cyan-500 rounded-full"></div>
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest text-right">نقشه راه جابجایی هوشمند دارایی</h2>
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">نقشه راه جابجایی هوشمند دارایی</h2>
               </div>
 
               {analysis?.strategies.map((strat, idx) => (
-                <div key={idx} className="bg-slate-800/80 border border-slate-700/60 rounded-2xl overflow-hidden shadow-xl transition-all hover:bg-slate-800/90 hover:border-cyan-500/20 group">
+                <div key={idx} className="bg-slate-800/80 border border-slate-700/60 rounded-2xl overflow-hidden shadow-xl transition-all hover:bg-slate-800/90 hover:border-cyan-500/20 group text-right">
                   <div className="bg-slate-700/30 px-5 py-3 flex items-center justify-between border-b border-white/5">
                     <div className="flex items-center gap-2">
                       <Calculator className="w-3.5 h-3.5 text-cyan-500 opacity-80" />
@@ -141,7 +162,7 @@ const App: React.FC = () => {
                   <div className="p-5 space-y-4">
                     {/* Executive Trade Proposal Section */}
                     <div className="bg-slate-900 px-4 py-4 rounded-xl border border-cyan-500/20 transition-all group-hover:border-cyan-500/40 shadow-inner relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-1">
+                      <div className="absolute top-0 left-0 p-1">
                          <Zap className="w-3 h-3 text-cyan-500/20" />
                       </div>
                       <div className="flex flex-col gap-3">

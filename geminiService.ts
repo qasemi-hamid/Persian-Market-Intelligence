@@ -3,26 +3,23 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResponse } from "./types";
 
 export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  
+  // بررسی دقیق برای راهنمایی کاربر
+  if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
+    throw new Error("تنظیمات ناقص: نام متغیر در ورسل باید API_KEY باشد و مقدار آن کد گوگل شما. پس از ذخیره حتما Redeploy کنید.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
-    به عنوان یک استراتژیست ارشد و معامله‌گر حرفه‌ای بازار (بزاری) در ایران، تحلیل دقیقی ارائه بده.
-    تمام مبالغ باید به "تومان" باشد. از کلمه ریال استفاده نکن.
+    به عنوان یک استراتژیست ارشد بازار در ایران، تحلیل دقیقی ارائه بده.
+    تمامی قیمت‌ها به تومان باشد.
     
-    ماموریت شما:
-    شناسایی بهترین فرصت‌های تبدیل دارایی (Swap) بر اساس فرمول‌های ریاضی مخفی بازار، تحلیل حباب (Bubble Analysis)، آربیتراژ و نسبت‌های تکنیکال.
+    ماموریت:
+    تحلیل حباب، آربیتراژ و پیشنهاد ۳ استراتژی جابجایی (Swap) بین طلا، دلار، تتر و سکه.
     
-    بسیار مهم: 
-    1. فیلد pair باید یک جمله کامل و واضح فارسی باشد که دقیقا بگوید چه چیزی به چه چیزی تبدیل شود.
-       مثال: "تبدیل دلار به سکه امامی" یا "تبدیل طلای ۱۸ عیار به تتر".
-    2. فیلد potentialProfit باید درصد سود تخمینی این جابجایی در بازه زمانی کوتاه مدت (۱ تا ۲ هفته) باشد.
-       مثال: "۴٪ الی ۶٪"
-    
-    موارد مورد نیاز:
-    1. استخراج قیمت‌های لحظه‌ای از tgju.org (دلار، طلای ۱۸، سکه امامی، تتر، انس).
-    2. ارائه حداقل ۳ استراتژی معامله حرفه‌ای (Trade Strategies) که شامل منطق ریاضی، تحلیل تکنیکال/فاندامنتال و تخمین سود باشد.
-    
-    پاسخ را کاملاً به زبان فارسی، حرفه‌ای و در قالب JSON ارائه بده.
+    پاسخ حتما در قالب JSON باشد.
   `;
 
   try {
@@ -42,13 +39,13 @@ export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
                 type: Type.OBJECT,
                 properties: {
                   title: { type: Type.STRING },
-                  pair: { type: Type.STRING, description: "A clear Persian sentence like 'تبدیل الف به ب'" },
+                  pair: { type: Type.STRING },
                   logic: { type: Type.STRING },
                   technicalAnalysis: { type: Type.STRING },
                   fundamentalAnalysis: { type: Type.STRING },
                   riskLevel: { type: Type.STRING, enum: ['LOW', 'MEDIUM', 'HIGH'] },
                   confidence: { type: Type.NUMBER },
-                  potentialProfit: { type: Type.STRING, description: "Estimated profit percentage, e.g. '5%'" }
+                  potentialProfit: { type: Type.STRING }
                 },
                 required: ['title', 'pair', 'logic', 'technicalAnalysis', 'fundamentalAnalysis', 'riskLevel', 'confidence', 'potentialProfit']
               }
@@ -74,14 +71,12 @@ export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
     });
 
     const data = JSON.parse(response.text);
-    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
-      title: chunk.web?.title || 'منبع داده',
-      uri: chunk.web?.uri || '#'
-    })) || [];
-
-    return { ...data, sources };
-  } catch (error) {
-    console.error("Analysis Error:", error);
+    return { ...data, sources: [] };
+  } catch (error: any) {
+    console.error("Gemini Error:", error);
+    if (error.message?.includes('API key not valid')) {
+      throw new Error("کد API وارد شده در ورسل معتبر نیست. لطفاً کد جدیدی از Google AI Studio دریافت کنید.");
+    }
     throw error;
   }
 };
