@@ -3,23 +3,24 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResponse } from "./types";
 
 export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
+  // این نام دقیقاً باید در پنل Vercel در کادر Key وارد شده باشد
   const apiKey = process.env.API_KEY;
   
-  // بررسی دقیق برای راهنمایی کاربر
-  if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
-    throw new Error("تنظیمات ناقص: نام متغیر در ورسل باید API_KEY باشد و مقدار آن کد گوگل شما. پس از ذخیره حتما Redeploy کنید.");
+  if (!apiKey || apiKey === "undefined") {
+    throw new Error("کلید پیدا نشد: در پنل ورسل، نام را API_KEY بگذارید. (حروف بزرگ)");
   }
 
+  if (!apiKey.startsWith("AIza")) {
+    throw new Error("فرمت کلید غلط است: کلید باید با AIza شروع شود. شما احتمالاً چیز دیگری در کادر Value گذاشته‌اید.");
+  }
+
+  // ایجاد کلاینت جدید برای هر درخواست جهت اطمینان از تازگی تنظیمات
   const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
-    به عنوان یک استراتژیست ارشد بازار در ایران، تحلیل دقیقی ارائه بده.
-    تمامی قیمت‌ها به تومان باشد.
-    
-    ماموریت:
-    تحلیل حباب، آربیتراژ و پیشنهاد ۳ استراتژی جابجایی (Swap) بین طلا، دلار، تتر و سکه.
-    
-    پاسخ حتما در قالب JSON باشد.
+    تحلیل حرفه‌ای بازار ایران (طلا، سکه، دلار، تتر).
+    قیمت‌های لحظه‌ای را پیدا کن و ۳ استراتژی جابجایی (Swap) پیشنهاد بده.
+    پاسخ فقط و فقط در قالب JSON باشد.
   `;
 
   try {
@@ -70,13 +71,19 @@ export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
       }
     });
 
+    if (!response.text) throw new Error("پاسخی از هوش مصنوعی دریافت نشد.");
+    
     const data = JSON.parse(response.text);
     return { ...data, sources: [] };
   } catch (error: any) {
-    console.error("Gemini Error:", error);
-    if (error.message?.includes('API key not valid')) {
-      throw new Error("کد API وارد شده در ورسل معتبر نیست. لطفاً کد جدیدی از Google AI Studio دریافت کنید.");
+    console.error("Detailed API Error:", error);
+    
+    // تشخیص نوع خطا برای راهنمایی کاربر
+    const errorMsg = error.toString();
+    if (errorMsg.includes("API key not valid") || errorMsg.includes("403") || errorMsg.includes("401")) {
+      throw new Error("گوگل کلید شما را رد کرد! یا کپی/پیست ناقص بوده یا پروژه گوگل شما فعال نیست.");
     }
-    throw error;
+    
+    throw new Error(`خطای سیستمی: ${error.message || "ارتباط با سرور گوگل برقرار نشد"}`);
   }
 };
