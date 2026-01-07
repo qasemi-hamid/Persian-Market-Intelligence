@@ -2,28 +2,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResponse } from "./types";
 
-/**
- * سرویس دریافت تحلیل عمیق بازار ایران با تمرکز بر سه لایه تکنیکال، فاندامنتال و محاسبات ریاضی
- */
 export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
-    به عنوان یک استراتژیست ارشد بازارهای مالی ایران:
-    ۱. قیمت لحظه‌ای دلار (بازار آزاد)، تتر، سکه امامی و طلای ۱۸ عیار را استخراج کن.
-    ۲. یک تحلیل کلی (Market Overview) از وضعیت فعلی بنویس.
-    ۳. سه استراتژی جابجایی دارایی (Swap) پیشنهاد بده. 
+    به عنوان یک استراتژیست ارشد و معامله‌گر حرفه‌ای بازار (بزاری) در ایران، تحلیل دقیقی ارائه بده.
+    تمام مبالغ باید به "تومان" باشد. از کلمه ریال استفاده نکن.
     
-    برای هر استراتژی موارد زیر الزامی است:
-    - تحلیل تکنیکال (بررسی نقاط کلیدی نمودار)
-    - تحلیل فاندامنتال (تاثیر اخبار و سیاست‌ها)
-    - محاسبات ریاضی (دلیل عددی جابجایی و فرمول بازدهی)
-    - تخمین سود احتمالی (بصورت درصد، مثلا ۱۵-۱۸٪)
-
-    نکات حیاتی: 
-    - تمام عبارات، عناوین و متون باید کاملاً "فارسی" باشند.
-    - در بخش logic، منطق محاسباتی را شفاف بنویس.
-    - پاسخ حتما در قالب JSON باشد.
+    ماموریت شما:
+    شناسایی بهترین فرصت‌های تبدیل دارایی (Swap) بر اساس فرمول‌های ریاضی مخفی بازار، تحلیل حباب (Bubble Analysis)، آربیتراژ و نسبت‌های تکنیکال.
+    
+    موارد مورد نیاز:
+    1. استخراج قیمت‌های لحظه‌ای از منابع معتبر مانند tgju.org (دلار، طلای ۱۸، سکه امامی، تتر، انس).
+    2. ارائه حداقل ۳ استراتژی معامله حرفه‌ای (Trade Strategies) که شامل:
+       - منطق ریاضی و فرمول مخفی بازار (مثلاً فرمول محاسبه حباب سکه یا نسبت طلا به دلار).
+       - تحلیل تکنیکال و فاندامنتال کوتاه مدت.
+       - پیشنهاد دقیق "چه چیزی را به چه چیزی تبدیل کنیم" (مثلاً تبدیل تتر به طلای آب‌شده).
+    
+    پاسخ را کاملاً به زبان فارسی، حرفه‌ای و در قالب JSON ارائه بده.
   `;
 
   try {
@@ -48,10 +44,9 @@ export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
                   technicalAnalysis: { type: Type.STRING },
                   fundamentalAnalysis: { type: Type.STRING },
                   riskLevel: { type: Type.STRING, enum: ['LOW', 'MEDIUM', 'HIGH'] },
-                  confidence: { type: Type.NUMBER },
-                  potentialProfit: { type: Type.STRING }
+                  confidence: { type: Type.NUMBER }
                 },
-                required: ['title', 'pair', 'logic', 'technicalAnalysis', 'fundamentalAnalysis', 'riskLevel', 'confidence', 'potentialProfit']
+                required: ['title', 'pair', 'logic', 'technicalAnalysis', 'fundamentalAnalysis', 'riskLevel', 'confidence']
               }
             },
             prices: {
@@ -74,20 +69,15 @@ export const getMarketAnalysis = async (): Promise<AnalysisResponse> => {
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("پاسخی از هوش مصنوعی دریافت نشد.");
+    const data = JSON.parse(response.text);
+    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+      title: chunk.web?.title || 'منبع داده',
+      uri: chunk.web?.uri || '#'
+    })) || [];
 
-    const parsedData = JSON.parse(text);
-    return {
-      ...parsedData,
-      sources: [] 
-    };
-
-  } catch (error: any) {
-    console.error("API Error:", error);
-    if (error.message?.includes("429") || error.message?.includes("QUOTA")) {
-      throw new Error("سهمیه رایگان هوش مصنوعی برای امروز به پایان رسیده است.");
-    }
-    throw new Error(`خطای سیستمی: ${error.message}`);
+    return { ...data, sources };
+  } catch (error) {
+    console.error("Analysis Error:", error);
+    throw error;
   }
 };
