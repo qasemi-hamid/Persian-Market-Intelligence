@@ -9,13 +9,12 @@ export interface PriceData {
 
 export interface TradeStrategy {
   title: string;
-  pair: string; // e.g., "تبدیل دلار به طلا"
+  pair: string; // e.g., "Toman to Gold"
   logic: string; // The mathematical/hidden formula
   technicalAnalysis: string;
   fundamentalAnalysis: string;
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   confidence: number; // percentage
-  potentialProfit: string; // e.g., "۵-۷٪"
 }
 
 export interface AnalysisResponse {
