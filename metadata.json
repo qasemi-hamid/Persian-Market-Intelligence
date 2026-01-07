@@ -1,5 +1,8 @@
+
 {
   "name": "ZarrinBin - Persian Market Intelligence",
-  "description": "A strategic advisor for the Iranian financial market, analyzing gold, currency, and crypto trends using AI to provide optimal investment strategies.",
-  "requestFramePermissions": []
+  "description": "A strategic advisor for the Iranian financial market, analyzing gold, currency, and crypto trends using AI and real-time data from TGJU.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }
